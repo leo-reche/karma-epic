@@ -1,6 +1,8 @@
-# karma-epic
+# The Karma-LLMifier
 
-Empty React and Vite app, served as static assets by a Cloudflare Worker at `leoreche.com/placeholder-path`.
+Turns a video into a Markdown file for an LLM (see `CONCEPT.md`). React and Vite app, served as static assets by a Cloudflare Worker at `leoreche.com/placeholder-path`.
+
+Processing is not connected yet: `src/processVideo.js` simulates it and returns a sample file.
 
 ## Commands
 

@@ -1,20 +1,186 @@
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  color-scheme: light;
+  font: 15px/1.5 Inter, system-ui, sans-serif;
+  color: #171717;
+  background: #fff;
 }
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-body {
-  margin: 0;
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
 
 main {
-  display: grid;
-  place-content: center;
-  min-height: 100dvh;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 64px 24px 24px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.intro {
+  margin: 8px 0 40px;
+  color: #666;
+}
+
+.flow {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 340px;
+  padding: 20px;
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.arrow {
+  flex: none;
+  align-self: center;
+  color: #999;
+}
+
+.drop,
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.drop {
+  gap: 6px;
+  padding: 16px;
+  background: none;
+  border: 1.5px dashed #bbb;
+  border-radius: 8px;
+}
+
+.drop:hover {
+  border-color: #555;
+}
+
+.drop.dragging {
+  border-color: #171717;
+  background: #f4f4f4;
+}
+
+.result {
+  gap: 16px;
+}
+
+.hint {
+  color: #777;
+  font-size: 13px;
+}
+
+.progress {
+  width: 100%;
+}
+
+.progress .hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+progress {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  margin-bottom: 8px;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #ececec;
+}
+
+progress::-webkit-progress-bar {
+  background: #ececec;
+}
+
+progress::-webkit-progress-value {
+  background: #171717;
+}
+
+progress::-moz-progress-bar {
+  background: #171717;
+}
+
+.download {
+  padding: 10px 22px;
+  background: #171717;
+  color: #fff;
+  border: 1px solid #171717;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.download:hover:enabled {
+  background: #333;
+}
+
+.download:disabled {
+  background: #f0f0f0;
+  border-color: #e4e4e4;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.error {
+  margin-top: 20px;
+  color: #b3261e;
+  font-size: 14px;
+}
+
+.notice {
+  margin-top: 40px;
+  color: #888;
+  font-size: 13px;
+}
+
+@media (max-width: 879px) {
+  .flow {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .arrow {
+    transform: rotate(90deg);
+    margin: 12px 0;
+  }
 }
