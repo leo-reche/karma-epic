@@ -63,9 +63,9 @@ p { font-size: 20px; line-height: 1.5; color: var(--muted); }
 .roadmap span { padding: 10px 20px; border: 1px solid var(--border); border-radius: 999px; }
 .roadmap i { font-style: normal; color: var(--accent); font-size: 22px; }
 
-.flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 14px; margin-top: 48px; min-height: 300px; }
-.flow > i { align-self: center; font-style: normal; font-size: 24px; color: var(--accent); }
-.flow .box { flex-direction: column; gap: 16px; padding: 26px 22px; }
+.flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 50px; margin-top: 48px; min-height: 300px; }
+.flow .box + .box::before { content: "→"; position: absolute; left: -37px; top: 50%; transform: translateY(-50%); font-size: 24px; color: var(--accent); }
+.flow .box { position: relative; flex-direction: column; gap: 16px; padding: 26px 22px; }
 .flow h3 { font-size: 22px; }
 .flow p { font-size: 18px; }
 .tag { margin-top: auto; padding: 4px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); font-size: 14px; font-weight: 700; color: var(--muted); }
@@ -167,24 +167,24 @@ Click the sketch to enlarge it, and click again to close it.</aside>
     <p class="kicker">Key talking points</p>
     <h2>From video to answers</h2>
     <div class="grid">
-      <div class="box">
+      <div class="box step">
         <span class="num">1</span>
         <div><h3>Upload a video</h3><p>Add your video, usually an MP4, and wait while the app processes it.</p></div>
       </div>
-      <div class="box">
+      <div class="box step">
         <span class="num">2</span>
         <div><h3>Download one file</h3><p>You get a Markdown (.md) file as soon as the Download button turns on.</p></div>
       </div>
-      <div class="box">
+      <div class="box step">
         <span class="num">3</span>
         <div><h3>Everything in it</h3><p>The full transcript, times to find each part in the video, and a few screenshots of important moments.</p></div>
       </div>
-      <div class="box">
+      <div class="box step">
         <span class="num">4</span>
         <div><h3>Ask your favourite AI</h3><p>Give it the file and ask questions about the video, without watching it all.</p></div>
       </div>
     </div>
-    <div class="roadmap">
+    <div class="roadmap step">
       <b>The plan</b>
       <span>Python script for one video</span><i>→</i>
       <span>Run it on Google Cloud</span><i>→</i>
@@ -198,31 +198,28 @@ Close with the plan: script first, then Google Cloud, then the website.</aside>
     <p class="kicker">Implementation</p>
     <h2>How to further implement it</h2>
     <div class="flow">
-      <div class="box">
+      <div class="box step">
         <span class="num">1</span>
         <div><h3>Python script</h3><p>A quick proof of concept that we will improve over time.</p></div>
         <span class="tag done">Created</span>
       </div>
-      <i>→</i>
-      <div class="box">
+      <div class="box step">
         <span class="num">2</span>
         <div><h3>Google Cloud</h3><p>We will host the script in a Google Cloud (GCP) project.</p></div>
         <span class="tag">Next</span>
       </div>
-      <i>→</i>
-      <div class="box">
+      <div class="box step">
         <span class="num">3</span>
         <div><h3>Internal website</h3><p>We will connect a live internal website to that project.</p></div>
         <span class="tag">Next</span>
       </div>
-      <i>→</i>
-      <div class="box">
+      <div class="box step">
         <span class="num">4</span>
         <div><h3>Your .md file</h3><p>Users get a file that they can give to their own AI.</p></div>
         <span class="tag">Result</span>
       </div>
     </div>
-    <div class="addon">
+    <div class="addon step">
       <h3>+ SKILL.md</h3>
       <p>A possible companion file that users give to their AI, so it learns how to implement what is in the video.</p>
     </div>
@@ -235,15 +232,15 @@ The SKILL.md is an add-on we can offer alongside the .md file.</aside>
     <p class="kicker">Design decisions</p>
     <h2>Why we built it this way</h2>
     <div class="grid three">
-      <div class="box">
+      <div class="box step">
         <span class="num">1</span>
         <div><h3>Not a chatbot</h3><p>Everyone already has an AI. We give it what it needs instead of building another one.</p></div>
       </div>
-      <div class="box">
+      <div class="box step">
         <span class="num">2</span>
         <div><h3>Video becomes knowledge</h3><p>The idea is to transform what is in a video into knowledge you can use.</p></div>
       </div>
-      <div class="box">
+      <div class="box step">
         <span class="num">3</span>
         <div><h3>No Python needed</h3><p>Users can run our Python script without knowing any Python.</p></div>
       </div>
