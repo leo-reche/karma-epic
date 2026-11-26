@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>The Karma-LLMifier</title>
+<style>
+:root {
+  --accent: #5b4be8;
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --border: #e1e4ea;
+  --text: #151821;
+  --muted: #555d6e;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); }
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+
+#viewport { position: fixed; inset: 0; touch-action: pan-y; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform: translate(-50%, -50%) scale(var(--scale, 1)); }
+
+.slide {
+  position: absolute; left: 0; top: 0; width: 1280px; height: 720px;
+  display: flex; flex-direction: column; padding: 48px 56px;
+  background: var(--bg); color: var(--text); overflow: hidden;
+  opacity: 0; visibility: hidden; transition: opacity .35s, visibility .35s;
+}
+.slide.active { opacity: 1; visibility: visible; }
+
+.step { transition: opacity .4s, transform .4s, visibility .4s; }
+.step:not(.shown) { opacity: 0; visibility: hidden; transform: translateY(14px); }
+
+.notes { display: none; }
+
+h2 { font-size: 46px; line-height: 1.15; letter-spacing: -.01em; }
+h3 { font-size: 25px; margin-bottom: 8px; }
+p { font-size: 20px; line-height: 1.5; color: var(--muted); }
+.kicker { font-size: 16px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.num { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 17px; }
+
+.board { flex: 1; display: grid; grid-template-columns: 300px 1fr; gap: 32px; align-items: center; margin-top: 24px; }
+.thoughts { list-style: none; display: grid; gap: 18px; }
+.thoughts li { display: flex; gap: 16px; }
+.thoughts h3 { font-size: 21px; line-height: 36px; margin-bottom: 2px; }
+.thoughts p { font-size: 17px; line-height: 1.4; }
+
+.sketch { position: relative; display: block; width: 100%; aspect-ratio: 1700 / 964; overflow: hidden; padding: 0; background: #fbfbf9; border: 1px solid var(--border); border-radius: 14px; cursor: zoom-in; }
+.sketch img { position: absolute; width: 114.06%; left: -6.47%; top: -6.02%; }
+.sketch.open { position: absolute; z-index: 2; left: 40px; top: 20px; width: 1200px; box-shadow: 0 20px 60px rgba(0, 0, 0, .25); cursor: zoom-out; }
+
+.grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 28px 0; }
+.box { display: flex; gap: 20px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 30px; }
+
+.roadmap { display: flex; align-items: center; gap: 16px; border-top: 1px solid var(--border); padding-top: 24px; font-size: 19px; }
+.roadmap b { margin-right: 8px; }
+.roadmap span { padding: 10px 20px; border: 1px solid var(--border); border-radius: 999px; }
+.roadmap i { font-style: normal; color: var(--accent); font-size: 22px; }
+
+.flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 14px; margin-top: 48px; min-height: 300px; }
+.flow > i { align-self: center; font-style: normal; font-size: 24px; color: var(--accent); }
+.flow .box { flex-direction: column; gap: 16px; padding: 26px 22px; }
+.flow h3 { font-size: 22px; }
+.flow p { font-size: 18px; }
+.tag { margin-top: auto; padding: 4px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); font-size: 14px; font-weight: 700; color: var(--muted); }
+.tag.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.addon { display: flex; align-items: center; gap: 24px; margin-top: 28px; padding: 24px 28px; border: 2px dashed var(--accent); border-radius: 18px; }
+.addon h3 { flex: none; margin: 0; }
+
+.grid.three { flex: none; grid-template-columns: repeat(3, 1fr); min-height: 300px; margin: 48px 0 0; }
+.grid.three .box { flex-direction: column; }
+
+#ink { position: absolute; inset: 0; z-index: 3; width: 1280px; height: 720px; pointer-events: none; touch-action: none; }
+.drawing #ink { pointer-events: auto; cursor: crosshair; }
+#laser { position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #ff2d2d; box-shadow: 0 0 14px 6px rgba(255, 45, 45, .6); pointer-events: none; z-index: 30; left: -50px; top: -50px; }
+.pointing #viewport, .pointing #viewport * { cursor: none !important; }
+#progress { position: fixed; left: 0; bottom: 0; height: 4px; background: var(--accent); transition: width .35s; z-index: 10; }
+
+#toolbar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 8px; background: #fff; border: 1px solid var(--border); box-shadow: 0 6px 24px rgba(0, 0, 0, .1); border-radius: 999px; z-index: 20; white-space: nowrap; transition: opacity .3s; }
+#toolbar button { border: 0; background: none; border-radius: 999px; padding: 7px 13px; font-size: 14px; }
+#toolbar button:hover { background: var(--surface); }
+#toolbar button.on { background: var(--accent); color: #fff; }
+#count { min-width: 60px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.idle #toolbar:not(:hover) { opacity: 0; pointer-events: none; }
+.idle:not(.drawing) #viewport { cursor: none; }
+
+.overlay { position: fixed; inset: 0; z-index: 40; }
+#black { background: #000; }
+#overview { background: var(--bg); overflow: auto; padding: 40px; display: grid; grid-template-columns: repeat(auto-fit, 320px); gap: 24px; justify-content: center; align-content: center; }
+.thumb { position: relative; width: 320px; height: 180px; border-radius: 8px; overflow: hidden; outline: 1px solid var(--border); cursor: pointer; }
+.thumb:hover, .thumb.current { outline: 3px solid var(--accent); }
+.thumb .slide { transform: scale(.25); transform-origin: 0 0; pointer-events: none; }
+.thumb b { position: absolute; right: 8px; bottom: 8px; z-index: 1; padding: 2px 9px; border-radius: 6px; background: #000a; color: #fff; font-size: 12px; }
+#help { display: grid; place-items: center; background: rgba(0, 0, 0, .35); }
+#help div { display: grid; grid-template-columns: auto auto; gap: 10px 40px; background: var(--bg); border-radius: 16px; padding: 32px 40px; font-size: 16px; max-height: 90vh; overflow: auto; }
+kbd { font-family: inherit; font-weight: 700; }
+#toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 50; padding: 10px 20px; border-radius: 10px; background: #222733; color: #fff; font-size: 15px; }
+
+#presenter { position: fixed; inset: 0; display: grid; grid-template: "current side" 1fr "bar bar" auto / 3fr 2fr; gap: 20px; padding: 20px; background: var(--bg); }
+#presenter .area-current { grid-area: current; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+#presenter .area-side { grid-area: side; display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+#presenter .label { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.preview { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; }
+.preview .slide { transform-origin: 0 0; pointer-events: none; }
+.preview.small { width: 70%; }
+.preview .end { display: grid; place-items: center; height: 100%; color: var(--muted); }
+#p-notes { flex: 1; min-height: 80px; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; font-size: 20px; line-height: 1.55; white-space: pre-line; }
+#presenter footer { grid-area: bar; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+#presenter footer button { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 20px; }
+#p-timer { font-size: 36px; font-weight: 700; }
+#p-status { margin-left: auto; color: var(--muted); }
+
+@page { size: 1280px 720px; margin: 0; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; transition: none !important; }
+  html, body { height: auto; overflow: visible; }
+  #viewport { position: static; }
+  #stage { position: static; width: 1280px; height: auto; transform: none; }
+  .slide { position: relative; opacity: 1; visibility: visible; break-after: page; }
+  .step:not(.shown) { opacity: 1; visibility: visible; transform: none; }
+  #ink, #laser, #progress, #toolbar, #toast, .overlay { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<main id="viewport">
+<div id="stage">
+
+  <section class="slide">
+    <p class="kicker">From idea to sketch</p>
+    <h2>The Karma-LLMifier</h2>
+    <div class="board">
+      <ol class="thoughts">
+        <li class="step">
+          <span class="num">1</span>
+          <div><h3>The problem</h3><p>Talks and interviews hold useful information, but you must watch the whole video to find it.</p></div>
+        </li>
+        <li class="step">
+          <span class="num">2</span>
+          <div><h3>The insight</h3><p>Most AI tools work better with text than with video.</p></div>
+        </li>
+        <li class="step">
+          <span class="num">3</span>
+          <div><h3>The idea</h3><p>A simple website that turns a video into a text file you can ask questions about.</p></div>
+        </li>
+        <li class="step">
+          <span class="num">4</span>
+          <div><h3>The design</h3><p>One page: upload on the left, download on the right. The button is grey until the file is ready.</p></div>
+        </li>
+      </ol>
+      <button class="sketch" data-toggle title="Click to enlarge">
+        <img src="assets/karma-llmifier-mockup.png" alt="Sketch of the website: upload your video, then download the output and give it to your favourite LLM. The download button is grayed out at first.">
+      </button>
+    </div>
+    <aside class="notes">Reveal the four points one at a time.
+Click the sketch to enlarge it, and click again to close it.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Key talking points</p>
+    <h2>From video to answers</h2>
+    <div class="grid">
+      <div class="box">
+        <span class="num">1</span>
+        <div><h3>Upload a video</h3><p>Add your video, usually an MP4, and wait while the app processes it.</p></div>
+      </div>
+      <div class="box">
+        <span class="num">2</span>
+        <div><h3>Download one file</h3><p>You get a Markdown (.md) file as soon as the Download button turns on.</p></div>
+      </div>
+      <div class="box">
+        <span class="num">3</span>
+        <div><h3>Everything in it</h3><p>The full transcript, times to find each part in the video, and a few screenshots of important moments.</p></div>
+      </div>
+      <div class="box">
+        <span class="num">4</span>
+        <div><h3>Ask your favourite AI</h3><p>Give it the file and ask questions about the video, without watching it all.</p></div>
+      </div>
+    </div>
+    <div class="roadmap">
+      <b>The plan</b>
+      <span>Python script for one video</span><i>→</i>
+      <span>Run it on Google Cloud</span><i>→</i>
+      <span>Connect it to our website</span>
+    </div>
+    <aside class="notes">Walk through the flow from 1 to 4.
+Close with the plan: script first, then Google Cloud, then the website.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Implementation</p>
+    <h2>How to further implement it</h2>
+    <div class="flow">
+      <div class="box">
+        <span class="num">1</span>
+        <div><h3>Python script</h3><p>A quick proof of concept that we will improve over time.</p></div>
+        <span class="tag done">Created</span>
+      </div>
+      <i>→</i>
+      <div class="box">
+        <span class="num">2</span>
+        <div><h3>Google Cloud</h3><p>We will host the script in a Google Cloud (GCP) project.</p></div>
+        <span class="tag">Next</span>
+      </div>
+      <i>→</i>
+      <div class="box">
+        <span class="num">3</span>
+        <div><h3>Internal website</h3><p>We will connect a live internal website to that project.</p></div>
+        <span class="tag">Next</span>
+      </div>
+      <i>→</i>
+      <div class="box">
+        <span class="num">4</span>
+        <div><h3>Your .md file</h3><p>Users get a file that they can give to their own AI.</p></div>
+        <span class="tag">Result</span>
+      </div>
+    </div>
+    <div class="addon">
+      <h3>+ SKILL.md</h3>
+      <p>A possible companion file that users give to their AI, so it learns how to implement what is in the video.</p>
+    </div>
+    <aside class="notes">The Python script is our proof of concept.
+Next we host it on Google Cloud and connect our internal website.
+The SKILL.md is an add-on we can offer alongside the .md file.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Design decisions</p>
+    <h2>Why we built it this way</h2>
+    <div class="grid three">
+      <div class="box">
+        <span class="num">1</span>
+        <div><h3>Not a chatbot</h3><p>Everyone already has an AI. We give it what it needs instead of building another one.</p></div>
+      </div>
+      <div class="box">
+        <span class="num">2</span>
+        <div><h3>Video becomes knowledge</h3><p>The idea is to transform what is in a video into knowledge you can use.</p></div>
+      </div>
+      <div class="box">
+        <span class="num">3</span>
+        <div><h3>No Python needed</h3><p>Users can run our Python script without knowing any Python.</p></div>
+      </div>
+    </div>
+    <aside class="notes">We are not competing with the AI tools people already use.
+The value is turning video into knowledge, with no technical skills required.</aside>
+  </section>
+
+  <canvas id="ink" width="2560" height="1440"></canvas>
+</div>
+</main>
+
+<div id="progress"></div>
+<div id="laser" hidden></div>
+
+<nav id="toolbar">
+  <button data-action="prev" title="Previous (Left arrow)">‹</button>
+  <span id="count"></span>
+  <button data-action="next" title="Next (Right arrow)">›</button>
+  <button data-action="overview" title="Overview (O)">Overview</button>
+  <button data-action="draw" title="Draw (D)">Draw</button>
+  <button data-action="laser" title="Laser pointer (L)">Laser</button>
+  <button data-action="presenter" title="Presenter view (P)">Presenter</button>
+  <button data-action="fullscreen" title="Fullscreen (F)">Fullscreen</button>
+  <button data-action="help" title="Shortcuts (H)">?</button>
+</nav>
+
+<div id="overview" class="overlay" hidden></div>
+<div id="black" class="overlay" hidden></div>
+<div id="help" class="overlay" hidden>
+  <div>
+    <kbd>→ ↓ Space PageDown</kbd><span>Next step or slide</span>
+    <kbd>← ↑ Backspace PageUp</kbd><span>Previous step or slide</span>
+    <kbd>Number then Enter</kbd><span>Jump to slide</span>
+    <kbd>Home / End</kbd><span>First or last slide</span>
+    <kbd>F</kbd><span>Fullscreen</span>
+    <kbd>P</kbd><span>Presenter view with notes and timer</span>
+    <kbd>O</kbd><span>Overview of all slides</span>
+    <kbd>D / C</kbd><span>Draw on slide / clear drawing</span>
+    <kbd>L</kbd><span>Laser pointer</span>
+    <kbd>B or .</kbd><span>Black screen</span>
+    <kbd>Ctrl + P</kbd><span>Save as PDF</span>
+    <kbd>Esc</kbd><span>Close panels and tools</span>
+  </div>
+</div>
+<div id="toast" hidden></div>
+
+<script>
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+const body = document.body;
+const stage = $('#stage');
+const slides = $$('.slide', stage);
+const stepsOf = (i) => $$('.step', slides[i]).length;
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const isPresenter = new URLSearchParams(location.search).has('presenter');
+const DECK = 'karma-pitch';
+
+let index = clamp((parseInt(location.hash.slice(1), 10) || 1) - 1, 0, slides.length - 1);
+let step = 0;
+
+function cloneSlide(i, shown) {
+  const copy = slides[i].cloneNode(true);
+  copy.classList.add('active');
+  $$('.step', copy).forEach((el, n) => el.classList.toggle('shown', n < shown));
+  return copy;
+}
+
+function startPresenter() {
+  body.innerHTML = `
+    <div id="presenter">
+      <div class="area-current">
+        <span class="label">Current</span>
+        <div class="preview" id="p-current"></div>
+      </div>
+      <div class="area-side">
+        <span class="label">Next</span>
+        <div class="preview small" id="p-next"></div>
+        <span class="label">Notes</span>
+        <div id="p-notes"></div>
+      </div>
+      <footer>
+        <span id="p-timer">00:00</span>
+        <button id="p-pause">Pause</button>
+        <button id="p-reset">Reset</button>
+        <button data-cmd="prev">‹ Previous</button>
+        <button data-cmd="next">Next ›</button>
+        <button data-cmd="black">Black screen</button>
+        <span id="p-status">Not connected. Open this view from the slides with the P key.</span>
+      </footer>
+    </div>`;
+  document.title = 'Presenter view';
+
+  const send = (message) => window.opener && window.opener.postMessage({ deck: DECK, ...message }, '*');
+  let current = { index, step };
+  let elapsed = 0;
+  let last = Date.now();
+  let running = true;
+  let heard = 0;
+
+  const fit = () => $$('.preview').forEach((box) => {
+    const slide = $('.slide', box);
+    if (slide) slide.style.transform = `scale(${box.clientWidth / 1280})`;
+  });
+
+  const draw = () => {
+    const { index: i, step: s } = current;
+    $('#p-current').replaceChildren(cloneSlide(i, s));
+    let upcoming;
+    if (s < stepsOf(i)) upcoming = cloneSlide(i, s + 1);
+    else if (i < slides.length - 1) upcoming = cloneSlide(i + 1, 0);
+    else upcoming = Object.assign(document.createElement('div'), { className: 'end', textContent: 'End of deck' });
+    $('#p-next').replaceChildren(upcoming);
+    $('#p-notes').textContent = $('.notes', slides[i])?.textContent.trim() || 'No notes for this slide.';
+    fit();
+  };
+
+  addEventListener('message', (event) => {
+    if (event.source !== window.opener || event.data?.deck !== DECK || event.data.type !== 'state') return;
+    const { index: i, step: s } = event.data;
+    const changed = i !== current.index || s !== current.step;
+    current = { index: i, step: s };
+    heard = Date.now();
+    if (changed) draw();
+  });
+
+  setInterval(() => {
+    const now = Date.now();
+    if (running) elapsed += now - last;
+    last = now;
+    const total = Math.floor(elapsed / 1000);
+    $('#p-timer').textContent = [Math.floor(total / 60), total % 60].map((n) => String(n).padStart(2, '0')).join(':');
+    $('#p-status').textContent = now - heard < 2000
+      ? `Slide ${current.index + 1} of ${slides.length}`
+      : 'Not connected. Open this view from the slides with the P key.';
+    send({ type: 'hello' });
+  }, 500);
+
+  $('#p-pause').onclick = (e) => { running = !running; e.target.textContent = running ? 'Pause' : 'Resume'; };
+  $('#p-reset').onclick = () => { elapsed = 0; };
+  $$('[data-cmd]').forEach((button) => button.addEventListener('click', () => {
+    send({ type: 'command', command: button.dataset.cmd });
+    button.blur();
+  }));
+
+  const keys = { ArrowRight: 'next', ArrowDown: 'next', PageDown: 'next', ' ': 'next', Enter: 'next', ArrowLeft: 'prev', ArrowUp: 'prev', PageUp: 'prev', Backspace: 'prev', Home: 'first', End: 'last', b: 'black', B: 'black', '.': 'black' };
+  addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || !keys[e.key]) return;
+    e.preventDefault();
+    send({ type: 'command', command: keys[e.key] });
+  });
+
+  addEventListener('resize', fit);
+  draw();
+  send({ type: 'hello' });
+}
+
+function startDeck() {
+  const ink = $('#ink');
+  const pen = ink.getContext('2d');
+  const overview = $('#overview');
+  const strokes = slides.map(() => []);
+  let presenterWindow = null;
+  let stroke = null;
+  let typed = '';
+  let typedTimer, idleTimer, toastTimer;
+
+  const fit = () => stage.style.setProperty('--scale', Math.min(innerWidth / 1280, innerHeight / 720));
+
+  const redraw = () => {
+    pen.setTransform(2, 0, 0, 2, 0, 0);
+    pen.clearRect(0, 0, 1280, 720);
+    pen.lineWidth = 5;
+    pen.lineCap = pen.lineJoin = 'round';
+    pen.strokeStyle = '#e53935';
+    strokes[index].forEach((points) => {
+      pen.beginPath();
+      pen.moveTo(...points[0]);
+      points.forEach((point) => pen.lineTo(...point));
+      pen.stroke();
+    });
+  };
+
+  const sync = () => presenterWindow && !presenterWindow.closed &&
+    presenterWindow.postMessage({ deck: DECK, type: 'state', index, step }, '*');
+
+  const render = () => {
+    slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+    $$('.step', slides[index]).forEach((el, n) => el.classList.toggle('shown', n < step));
+    $('#count').textContent = `${index + 1} / ${slides.length}`;
+    $('#progress').style.width = `${((index + 1) / slides.length) * 100}%`;
+    $$('.thumb', overview).forEach((thumb, i) => thumb.classList.toggle('current', i === index));
+    try { history.replaceState(null, '', '#' + (index + 1)); } catch {}
+    redraw();
+    sync();
+  };
+
+  const go = (target, targetStep = 0) => {
+    target = clamp(target, 0, slides.length - 1);
+    if (target !== index) $$('.open', slides[index]).forEach((el) => el.classList.remove('open'));
+    index = target;
+    step = targetStep;
+    render();
+  };
+
+  const toast = (text) => {
+    $('#toast').textContent = text;
+    $('#toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 3500);
+  };
+
+  const mark = (action, on) => $(`[data-action="${action}"]`).classList.toggle('on', on);
+
+  const setDraw = (on) => {
+    body.classList.toggle('drawing', on);
+    mark('draw', on);
+    if (on) setLaser(false);
+  };
+
+  const setLaser = (on) => {
+    body.classList.toggle('pointing', on);
+    $('#laser').hidden = !on;
+    mark('laser', on);
+    if (on) setDraw(false);
+  };
+
+  const toggleOverview = (open = overview.hidden) => {
+    overview.hidden = !open;
+    if (!open) return overview.replaceChildren();
+    overview.replaceChildren(...slides.map((_, i) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      thumb.classList.toggle('current', i === index);
+      const number = Object.assign(document.createElement('b'), { textContent: i + 1 });
+      const copy = cloneSlide(i, stepsOf(i));
+      copy.inert = true;
+      thumb.append(copy, number);
+      thumb.addEventListener('click', () => { toggleOverview(false); go(i); });
+      return thumb;
+    }));
+  };
+
+  const actions = {
+    next: () => (step < stepsOf(index) ? go(index, step + 1) : index < slides.length - 1 && go(index + 1)),
+    prev: () => (step > 0 ? go(index, step - 1) : index > 0 && go(index - 1, stepsOf(index - 1))),
+    first: () => go(0),
+    last: () => go(slides.length - 1),
+    overview: () => toggleOverview(),
+    draw: () => setDraw(!body.classList.contains('drawing')),
+    clear: () => { strokes[index] = []; redraw(); },
+    laser: () => setLaser(!body.classList.contains('pointing')),
+    black: () => { $('#black').hidden = !$('#black').hidden; },
+    help: () => { $('#help').hidden = !$('#help').hidden; },
+    fullscreen: () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => toast('Fullscreen is not available'))),
+    presenter: () => {
+      presenterWindow = window.open(location.href.split(/[?#]/)[0] + '?presenter#' + (index + 1), 'karma-presenter', 'width=1200,height=750');
+      if (!presenterWindow) toast('Allow pop-ups for this page to open the presenter view');
+    },
+    escape: () => {
+      $('#help').hidden = true;
+      $('#black').hidden = true;
+      $$('.open', stage).forEach((el) => el.classList.remove('open'));
+      toggleOverview(false);
+      setDraw(false);
+      setLaser(false);
+    },
+  };
+
+  const keys = {
+    ArrowRight: 'next', ArrowDown: 'next', PageDown: 'next', ' ': 'next', Enter: 'next',
+    ArrowLeft: 'prev', ArrowUp: 'prev', PageUp: 'prev', Backspace: 'prev',
+    Home: 'first', End: 'last', Escape: 'escape',
+    o: 'overview', d: 'draw', c: 'clear', l: 'laser', b: 'black', '.': 'black',
+    h: 'help', '?': 'help', f: 'fullscreen', p: 'presenter',
+  };
+
+  addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest('button') && (e.key === ' ' || e.key === 'Enter')) return;
+
+    if (/^\d$/.test(e.key)) {
+      typed += e.key;
+      toast('Go to slide ' + typed);
+      clearTimeout(typedTimer);
+      typedTimer = setTimeout(() => { typed = ''; }, 2000);
+      return;
+    }
+    if (e.key === 'Enter' && typed) {
+      go(Number(typed) - 1);
+      typed = '';
+      return;
+    }
+
+    let action = keys[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    if (!action) return;
+    e.preventDefault();
+    if (e.key === ' ' && e.shiftKey) action = 'prev';
+    if (!$('#black').hidden && action !== 'black') return actions.black();
+    if (!overview.hidden && e.key === 'Enter') return toggleOverview(false);
+    actions[action]();
+  });
+
+  document.addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (button && e.detail) button.blur();
+  });
+
+  $('#toolbar').addEventListener('click', (e) => {
+    const button = e.target.closest('[data-action]');
+    if (button) actions[button.dataset.action]();
+  });
+
+  stage.addEventListener('click', (e) => {
+    const toggle = e.target.closest('[data-toggle]');
+    if (toggle) return toggle.classList.toggle('open');
+    if (body.classList.contains('drawing') || String(getSelection())) return;
+    actions.next();
+  });
+
+  $('#black').addEventListener('click', actions.black);
+  $('#help').addEventListener('click', actions.help);
+
+  const position = (e) => {
+    const box = ink.getBoundingClientRect();
+    return [((e.clientX - box.left) / box.width) * 1280, ((e.clientY - box.top) / box.height) * 720];
+  };
+  ink.addEventListener('pointerdown', (e) => {
+    ink.setPointerCapture(e.pointerId);
+    stroke = [position(e)];
+    strokes[index].push(stroke);
+    redraw();
+  });
+  ink.addEventListener('pointermove', (e) => {
+    if (!stroke) return;
+    stroke.push(position(e));
+    redraw();
+  });
+  ['pointerup', 'pointercancel'].forEach((type) => ink.addEventListener(type, () => { stroke = null; }));
+
+  const wake = () => {
+    body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => body.classList.add('idle'), 2500);
+  };
+  addEventListener('pointermove', (e) => {
+    $('#laser').style.left = e.clientX + 'px';
+    $('#laser').style.top = e.clientY + 'px';
+    wake();
+  });
+  addEventListener('pointerdown', wake);
+
+  let touch = null;
+  stage.addEventListener('touchstart', (e) => {
+    touch = body.classList.contains('drawing') || e.target.closest('button') ? null : e.changedTouches[0];
+  }, { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    if (!touch) return;
+    const dx = e.changedTouches[0].clientX - touch.clientX;
+    const dy = e.changedTouches[0].clientY - touch.clientY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) actions[dx < 0 ? 'next' : 'prev']();
+    touch = null;
+  });
+
+  addEventListener('message', (e) => {
+    if (!e.source || e.data?.deck !== DECK) return;
+    if (e.data.type === 'hello') {
+      presenterWindow = e.source;
+      sync();
+    }
+    if (e.data.type === 'command' && e.source === presenterWindow) actions[e.data.command]?.();
+  });
+
+  addEventListener('hashchange', () => go((parseInt(location.hash.slice(1), 10) || 1) - 1));
+  addEventListener('resize', fit);
+
+  fit();
+  render();
+  wake();
+}
+
+if (isPresenter) startPresenter();
+else startDeck();
+</script>
+</body>
+</html>

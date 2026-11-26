@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>Pitch Deck</title>
+<style>
+:root {
+  --accent: #6d5efc;
+  --accent-2: #22c7a9;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+}
+[data-theme="dark"] {
+  --bg: #0f1117;
+  --surface: #181b25;
+  --border: #2a2f3d;
+  --text: #f2f3f7;
+  --muted: #9ca3b5;
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #f4f5f9;
+  --border: #dde0ea;
+  --text: #151821;
+  --muted: #5d6577;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: #000; color: var(--text); font-family: var(--font); }
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+
+#viewport { position: fixed; inset: 0; background: var(--bg); touch-action: pan-y; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform: translate(-50%, -50%) scale(var(--scale, 1)); }
+
+.slide {
+  position: absolute; left: 0; top: 0; width: 1280px; height: 720px;
+  display: flex; flex-direction: column; padding: 72px 96px;
+  background: var(--bg); color: var(--text); overflow: hidden;
+  opacity: 0; visibility: hidden; transition: opacity .35s, visibility .35s;
+}
+.slide.active { opacity: 1; visibility: visible; }
+.slide.center { align-items: center; justify-content: center; text-align: center; }
+
+.step { transition: opacity .4s, transform .4s, visibility .4s; }
+.step:not(.shown) { opacity: 0; visibility: hidden; transform: translateY(14px); }
+
+.notes { display: none; }
+
+h1 { font-size: 84px; line-height: 1.05; letter-spacing: -.02em; }
+h2 { font-size: 48px; line-height: 1.15; letter-spacing: -.01em; margin-bottom: 36px; }
+h3 { font-size: 26px; margin-bottom: 8px; }
+p { font-size: 22px; line-height: 1.5; }
+.kicker { font-size: 17px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+.lead { font-size: 30px; color: var(--muted); max-width: 820px; }
+.muted { color: var(--muted); }
+.gradient { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.grow { flex: 1; min-height: 0; }
+.hint { font-size: 17px; color: var(--muted); margin-top: 22px; }
+
+.grid { display: grid; gap: 24px; grid-template-columns: repeat(3, 1fr); }
+.grid.two { grid-template-columns: repeat(2, 1fr); }
+.box { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 30px; }
+.box p { font-size: 19px; color: var(--muted); }
+
+.list { list-style: none; display: grid; gap: 20px; }
+.list li { display: flex; gap: 22px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px 30px; font-size: 25px; }
+.num { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 21px; }
+
+.card { text-align: left; display: flex; flex-direction: column; min-height: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 32px; transition: border-color .2s, transform .2s; }
+.card:hover { border-color: var(--accent); transform: translateY(-4px); }
+.card .icon { font-size: 44px; margin-bottom: 22px; }
+.card .title { font-size: 26px; font-weight: 700; margin-bottom: 10px; }
+.card .summary { font-size: 19px; color: var(--muted); line-height: 1.5; }
+.card .detail { font-size: 19px; line-height: 1.5; margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border); opacity: 0; transform: translateY(10px); transition: opacity .3s, transform .3s; }
+.card.open { border-color: var(--accent); }
+.card.open .detail { opacity: 1; transform: none; }
+
+.segmented { display: inline-flex; align-self: flex-start; gap: 4px; padding: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
+.segmented button { border: 0; background: none; border-radius: 999px; padding: 10px 24px; font-size: 18px; color: var(--muted); }
+.segmented button.selected { background: var(--accent); color: #fff; }
+
+[data-tabs] { display: flex; flex-direction: column; gap: 24px; }
+[data-panel] { display: none; grid-template-columns: 2fr 3fr; gap: 36px; flex: 1; min-height: 0; }
+[data-panel].selected { display: grid; animation: rise .35s; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+
+.placeholder { display: grid; place-items: center; border: 2px dashed var(--border); border-radius: 18px; color: var(--muted); font-size: 20px; overflow: hidden; min-height: 0; }
+.placeholder img, .placeholder video { width: 100%; height: 100%; object-fit: cover; }
+.shot { flex: 1; width: 100%; min-height: 0; object-fit: contain; }
+
+.calc { display: grid; grid-template-columns: 3fr 2fr; gap: 36px; }
+.sliders { display: grid; gap: 30px; align-content: center; }
+.sliders label { display: grid; grid-template-columns: 1fr auto; gap: 10px; font-size: 21px; }
+.sliders input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); height: 28px; }
+.result { display: grid; place-content: center; text-align: center; min-height: 330px; }
+.big { font-size: 82px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+
+.stat .big { font-size: 60px; color: var(--accent); }
+.chart { display: flex; align-items: flex-end; gap: 28px; margin-top: 30px; padding: 0 12px; }
+.bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 10px; font-size: 17px; color: var(--muted); }
+.bar .track { flex: 1; width: 100%; display: flex; align-items: flex-end; border-bottom: 1px solid var(--border); }
+.bar i { position: relative; display: block; width: 100%; height: 0; background: linear-gradient(var(--accent), var(--accent-2)); border-radius: 10px 10px 0 0; transition: height .9s cubic-bezier(.2, .8, .2, 1); }
+.slide.active .bar i { height: calc(var(--v) * 1%); }
+.bar i::after { content: attr(data-label); position: absolute; left: 50%; top: 10px; transform: translateX(-50%); font-style: normal; font-weight: 700; color: #fff; opacity: 0; transition: opacity .2s; }
+.bar:hover i::after { opacity: 1; }
+
+table { width: 100%; border-collapse: collapse; font-size: 22px; }
+th, td { padding: 19px 22px; text-align: center; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: left; }
+tr > :nth-child(2) { background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 700; }
+.yes { color: var(--accent-2); }
+.no { color: var(--muted); }
+
+.price { font-size: 54px; font-weight: 800; margin: 14px 0; }
+.price small { font-size: 20px; font-weight: 400; color: var(--muted); }
+.box.featured { border: 2px solid var(--accent); }
+[data-mode="monthly"] .when-yearly, [data-mode="yearly"] .when-monthly { display: none; }
+
+.poll { display: grid; gap: 16px; }
+.poll .option { position: relative; display: flex; justify-content: space-between; text-align: left; padding: 24px 30px; font-size: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.poll .option:hover { border-color: var(--accent); }
+.poll .option::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--share, 0%); background: color-mix(in srgb, var(--accent) 28%, transparent); transition: width .4s; }
+.poll .option span { position: relative; }
+.link { align-self: flex-start; background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 17px; margin-top: 18px; }
+
+.person { text-align: center; }
+.avatar { width: 132px; height: 132px; margin: 0 auto 22px; border-radius: 50%; display: grid; place-items: center; font-size: 40px; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.funds { display: grid; gap: 22px; align-content: center; }
+.fund { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 21px; }
+.fund i { grid-column: 1 / -1; height: 14px; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent-2)) no-repeat var(--surface); background-size: 0 100%; transition: background-size .9s; }
+.slide.active .fund i { background-size: calc(var(--v) * 1%) 100%; }
+
+#ink { position: absolute; inset: 0; width: 1280px; height: 720px; pointer-events: none; touch-action: none; }
+.drawing #ink { pointer-events: auto; cursor: crosshair; }
+#laser { position: fixed; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #ff2d2d; box-shadow: 0 0 14px 6px rgba(255, 45, 45, .6); pointer-events: none; z-index: 30; left: -50px; top: -50px; }
+.pointing #viewport, .pointing #viewport * { cursor: none !important; }
+#progress { position: fixed; left: 0; bottom: 0; height: 4px; background: var(--accent); transition: width .35s; z-index: 10; }
+
+#toolbar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 8px; background: rgba(20, 22, 30, .92); color: #fff; border: 1px solid #333949; border-radius: 999px; z-index: 20; white-space: nowrap; transition: opacity .3s; }
+#toolbar button { border: 0; background: none; border-radius: 999px; padding: 7px 13px; font-size: 14px; }
+#toolbar button:hover { background: #2c3142; }
+#toolbar button.on { background: var(--accent); }
+#count { min-width: 70px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.idle #toolbar:not(:hover) { opacity: 0; pointer-events: none; }
+.idle:not(.drawing) #viewport { cursor: none; }
+
+.overlay { position: fixed; inset: 0; z-index: 40; }
+#black { background: #000; }
+#overview { background: var(--bg); overflow: auto; padding: 40px; display: grid; grid-template-columns: repeat(auto-fill, 320px); gap: 24px; justify-content: center; align-content: start; }
+.thumb { position: relative; width: 320px; height: 180px; padding: 0; border: 0; background: none; border-radius: 8px; overflow: hidden; outline: 1px solid var(--border); text-align: left; }
+.thumb:hover, .thumb.current { outline: 3px solid var(--accent); }
+.thumb .slide { transform: scale(.25); transform-origin: 0 0; pointer-events: none; }
+.thumb b { position: absolute; right: 8px; bottom: 8px; z-index: 1; padding: 2px 9px; border-radius: 6px; background: #000a; color: #fff; font-size: 12px; }
+#help { display: grid; place-items: center; background: rgba(0, 0, 0, .75); }
+#help div { display: grid; grid-template-columns: auto auto; gap: 10px 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px 40px; font-size: 16px; max-height: 90vh; overflow: auto; }
+kbd { font-family: inherit; font-weight: 700; }
+#toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 50; padding: 10px 20px; border-radius: 10px; background: #222733; color: #fff; font-size: 15px; }
+
+#presenter { position: fixed; inset: 0; display: grid; grid-template: "current side" 1fr "bar bar" auto / 3fr 2fr; gap: 20px; padding: 20px; background: var(--bg); }
+#presenter .area-current { grid-area: current; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+#presenter .area-side { grid-area: side; display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+#presenter .label { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.preview { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; }
+.preview .slide { transform-origin: 0 0; pointer-events: none; }
+.preview.small { width: 70%; }
+.preview .end { display: grid; place-items: center; height: 100%; color: var(--muted); }
+#p-notes { flex: 1; min-height: 80px; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; font-size: 20px; line-height: 1.55; white-space: pre-line; }
+#presenter footer { grid-area: bar; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+#presenter footer button { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 20px; }
+#p-timer { font-size: 36px; font-weight: 700; }
+#p-status { margin-left: auto; color: var(--muted); }
+
+@page { size: 1280px 720px; margin: 0; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; transition: none !important; animation: none !important; }
+  html, body { height: auto; overflow: visible; }
+  #viewport { position: static; }
+  #stage { position: static; width: 1280px; height: auto; transform: none; }
+  .slide { position: relative; opacity: 1; visibility: visible; break-after: page; }
+  .step:not(.shown) { opacity: 1; visibility: visible; transform: none; }
+  .bar i { height: calc(var(--v) * 1%); }
+  .fund i { background-size: calc(var(--v) * 1%) 100%; }
+  .card .detail { opacity: 1; transform: none; }
+  #ink, #laser, #progress, #toolbar, #toast, .overlay { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<main id="viewport">
+<div id="stage">
+
+  <section class="slide center">
+    <p class="kicker">Investor pitch · Month 2026</p>
+    <h1><span class="gradient">Company Name</span></h1>
+    <p class="lead" style="margin-top: 24px">One sentence that says what you do, for whom, and why it matters.</p>
+    <p class="muted" style="margin-top: 56px">Your Name · Role</p>
+    <aside class="notes">Introduce yourself and give the one-line pitch.
+Pause before moving on.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Problem</p>
+    <h2>The pain your customer feels today</h2>
+    <ul class="list">
+      <li class="step"><span class="num">1</span>First pain point, described in the customer's words</li>
+      <li class="step"><span class="num">2</span>Second pain point, with a number that shows its size</li>
+      <li class="step"><span class="num">3</span>Why current alternatives fail to solve it</li>
+    </ul>
+    <aside class="notes">Reveal one point at a time.
+Tell a short story about a real customer.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Solution</p>
+    <h2>How we solve it</h2>
+    <div class="grid" data-interactive>
+      <button class="card" data-toggle>
+        <span class="icon">⚡</span>
+        <span class="title">Benefit one</span>
+        <span class="summary">A short description of the first thing you do better.</span>
+        <span class="detail">Proof or example that backs up this benefit.</span>
+      </button>
+      <button class="card" data-toggle>
+        <span class="icon">🎯</span>
+        <span class="title">Benefit two</span>
+        <span class="summary">A short description of the second thing you do better.</span>
+        <span class="detail">Proof or example that backs up this benefit.</span>
+      </button>
+      <button class="card" data-toggle>
+        <span class="icon">🔒</span>
+        <span class="title">Benefit three</span>
+        <span class="summary">A short description of the third thing you do better.</span>
+        <span class="detail">Proof or example that backs up this benefit.</span>
+      </button>
+    </div>
+    <p class="hint">Click a card to see more</p>
+    <aside class="notes">Click each card as you talk about it.</aside>
+  </section>
+
+  <section class="slide" style="padding: 40px 64px">
+    <p class="kicker">Product</p>
+    <h2 style="margin-bottom: 20px">The Karma-LLMifier</h2>
+    <img class="shot" src="assets/karma-llmifier-mockup.png" alt="Karma-LLMifier mockup: upload your video, then download the output and give it to your favourite LLM">
+    <aside class="notes">Upload a video, download the output, and give it to your favourite LLM.
+The download button is grayed out at first.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Product</p>
+    <h2>How it works</h2>
+    <div class="grow" data-tabs data-interactive>
+      <div class="segmented">
+        <button data-tab="1" class="selected">1. Connect</button>
+        <button data-tab="2">2. Configure</button>
+        <button data-tab="3">3. Results</button>
+      </div>
+      <div data-panel="1" class="selected">
+        <div><h3>Step one</h3><p class="muted">What the user does first and what they get from it.</p></div>
+        <div class="placeholder">Screenshot or video for step one</div>
+      </div>
+      <div data-panel="2">
+        <div><h3>Step two</h3><p class="muted">What happens next and why it is easy.</p></div>
+        <div class="placeholder">Screenshot or video for step two</div>
+      </div>
+      <div data-panel="3">
+        <div><h3>Step three</h3><p class="muted">The outcome the customer cares about.</p></div>
+        <div class="placeholder">Screenshot or video for step three</div>
+      </div>
+    </div>
+    <aside class="notes">Walk through the three tabs, or switch to a live demo here.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Market</p>
+    <h2>Size the opportunity live</h2>
+    <div class="calc" data-calc data-factor="12" data-interactive>
+      <div class="sliders">
+        <label>Potential customers <output></output>
+          <input type="range" min="1000" max="1000000" step="1000" value="200000" data-format="number">
+        </label>
+        <label>Price per month <output></output>
+          <input type="range" min="1" max="500" step="1" value="40" data-format="currency">
+        </label>
+        <label>Market share we can win <output></output>
+          <input type="range" min="1" max="100" step="1" value="5" data-format="percent">
+        </label>
+      </div>
+      <div class="box result">
+        <p>Yearly revenue potential</p>
+        <div class="big gradient" data-result></div>
+        <p>Move the sliders</p>
+      </div>
+    </div>
+    <aside class="notes">Ask the audience which assumption they would challenge, then move that slider.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Traction</p>
+    <h2>Proof that it is working</h2>
+    <div class="grid">
+      <div class="box stat"><div class="big" data-count="1200" data-suffix="+"></div><p>Active users</p></div>
+      <div class="box stat"><div class="big" data-count="48" data-prefix="€" data-suffix="K"></div><p>Annual recurring revenue</p></div>
+      <div class="box stat"><div class="big" data-count="22" data-suffix="%"></div><p>Monthly growth</p></div>
+    </div>
+    <div class="chart grow">
+      <div class="bar"><div class="track"><i style="--v: 18" data-label="€8K"></i></div>Q1</div>
+      <div class="bar"><div class="track"><i style="--v: 34" data-label="€16K"></i></div>Q2</div>
+      <div class="bar"><div class="track"><i style="--v: 62" data-label="€30K"></i></div>Q3</div>
+      <div class="bar"><div class="track"><i style="--v: 100" data-label="€48K"></i></div>Q4</div>
+    </div>
+    <aside class="notes">Replace with real figures only. Hover a bar to show its value.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Business model</p>
+    <h2>How we make money</h2>
+    <div data-switch data-mode="monthly" data-interactive style="display: grid; gap: 28px">
+      <div class="segmented">
+        <button data-value="monthly" class="selected">Monthly</button>
+        <button data-value="yearly">Yearly</button>
+      </div>
+      <div class="grid">
+        <div class="box"><h3>Starter</h3><div class="price"><span class="when-monthly">€19 <small>/ month</small></span><span class="when-yearly">€190 <small>/ year</small></span></div><p>Who this plan is for and what is included.</p></div>
+        <div class="box featured"><h3>Growth</h3><div class="price"><span class="when-monthly">€49 <small>/ month</small></span><span class="when-yearly">€490 <small>/ year</small></span></div><p>Who this plan is for and what is included.</p></div>
+        <div class="box"><h3>Scale</h3><div class="price"><span class="when-monthly">€99 <small>/ month</small></span><span class="when-yearly">€990 <small>/ year</small></span></div><p>Who this plan is for and what is included.</p></div>
+      </div>
+    </div>
+    <aside class="notes">Mention margins and the plan most customers choose.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Competition</p>
+    <h2>Why we win</h2>
+    <table>
+      <thead><tr><th>Capability</th><th>Us</th><th>Competitor A</th><th>Competitor B</th></tr></thead>
+      <tbody>
+        <tr><td>Key capability one</td><td class="yes">✓</td><td class="no">✕</td><td class="yes">✓</td></tr>
+        <tr><td>Key capability two</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td></tr>
+        <tr><td>Key capability three</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
+        <tr><td>Key capability four</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
+      </tbody>
+    </table>
+    <aside class="notes">Focus on the one or two rows that competitors cannot copy easily.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Audience</p>
+    <h2>A question for you</h2>
+    <div data-poll data-interactive>
+      <div class="poll">
+        <button class="option"><span>Option A: we face this every week</span><span data-share>0</span></button>
+        <button class="option"><span>Option B: it happens now and then</span><span data-share>0</span></button>
+        <button class="option"><span>Option C: not a problem for us</span><span data-share>0</span></button>
+      </div>
+      <button class="link" data-reset>Reset votes</button>
+    </div>
+    <p class="hint">Take a show of hands and click once per vote</p>
+    <aside class="notes">Optional interaction slide. Delete it if it does not fit your pitch.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Team</p>
+    <h2>Who is building this</h2>
+    <div class="grid">
+      <div class="box person"><div class="avatar">AA</div><h3>Name</h3><p>Role and the one reason this person is right for it.</p></div>
+      <div class="box person"><div class="avatar">BB</div><h3>Name</h3><p>Role and the one reason this person is right for it.</p></div>
+      <div class="box person"><div class="avatar">CC</div><h3>Name</h3><p>Role and the one reason this person is right for it.</p></div>
+    </div>
+    <aside class="notes">Highlight relevant experience, not full biographies.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">The ask</p>
+    <h2>What we need to reach the next milestone</h2>
+    <div class="grid two grow">
+      <div class="box result">
+        <p>We are raising</p>
+        <div class="big gradient">€500K</div>
+        <p>for 18 months of runway</p>
+      </div>
+      <div class="funds">
+        <div class="fund"><span>Product</span><b>45%</b><i style="--v: 45"></i></div>
+        <div class="fund"><span>Sales and marketing</span><b>35%</b><i style="--v: 35"></i></div>
+        <div class="fund"><span>Operations</span><b>20%</b><i style="--v: 20"></i></div>
+      </div>
+    </div>
+    <aside class="notes">State the milestone this money gets you to.</aside>
+  </section>
+
+  <section class="slide center">
+    <h1><span class="gradient">Thank you</span></h1>
+    <p class="lead" style="margin-top: 24px">Questions?</p>
+    <p class="muted" style="margin-top: 56px">you@company.com · company.com</p>
+    <aside class="notes">Repeat the one-line pitch and the ask.</aside>
+  </section>
+
+  <section class="slide">
+    <p class="kicker">Appendix</p>
+    <h2>Blank slide</h2>
+    <div class="placeholder grow">Your content</div>
+    <aside class="notes">Copy this section to create new slides.</aside>
+  </section>
+
+  <canvas id="ink" width="2560" height="1440"></canvas>
+</div>
+</main>
+
+<div id="progress"></div>
+<div id="laser" hidden></div>
+
+<nav id="toolbar">
+  <button data-action="prev" title="Previous (Left arrow)">‹</button>
+  <span id="count"></span>
+  <button data-action="next" title="Next (Right arrow)">›</button>
+  <button data-action="overview" title="Overview (O)">Overview</button>
+  <button data-action="draw" title="Draw (D)">Draw</button>
+  <button data-action="laser" title="Laser pointer (L)">Laser</button>
+  <button data-action="presenter" title="Presenter view (P)">Presenter</button>
+  <button data-action="theme" title="Light or dark (T)">Theme</button>
+  <button data-action="fullscreen" title="Fullscreen (F)">Fullscreen</button>
+  <button data-action="help" title="Shortcuts (H)">?</button>
+</nav>
+
+<div id="overview" class="overlay" hidden></div>
+<div id="black" class="overlay" hidden></div>
+<div id="help" class="overlay" hidden>
+  <div>
+    <kbd>→ ↓ Space PageDown</kbd><span>Next step or slide</span>
+    <kbd>← ↑ Backspace PageUp</kbd><span>Previous step or slide</span>
+    <kbd>Number then Enter</kbd><span>Jump to slide</span>
+    <kbd>Home / End</kbd><span>First or last slide</span>
+    <kbd>F</kbd><span>Fullscreen</span>
+    <kbd>P</kbd><span>Presenter view with notes and timer</span>
+    <kbd>O</kbd><span>Overview of all slides</span>
+    <kbd>D / C</kbd><span>Draw on slide / clear drawing</span>
+    <kbd>L</kbd><span>Laser pointer</span>
+    <kbd>B or .</kbd><span>Black screen</span>
+    <kbd>T</kbd><span>Light or dark theme</span>
+    <kbd>Ctrl + P</kbd><span>Save as PDF</span>
+    <kbd>Esc</kbd><span>Close panels and tools</span>
+  </div>
+</div>
+<div id="toast" hidden></div>
+
+<script>
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+const root = document.documentElement;
+const body = document.body;
+const stage = $('#stage');
+const slides = $$('.slide', stage);
+const stepsOf = (i) => $$('.step', slides[i]).length;
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const isPresenter = new URLSearchParams(location.search).has('presenter');
+
+const money = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const bigMoney = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 });
+const plain = new Intl.NumberFormat('en-IE');
+const formats = { number: (v) => plain.format(v), currency: (v) => money.format(v), percent: (v) => v + '%' };
+
+let index = clamp((parseInt(location.hash.slice(1), 10) || 1) - 1, 0, slides.length - 1);
+let step = 0;
+
+function setTheme(theme) {
+  root.dataset.theme = theme;
+  try { localStorage.setItem('deck-theme', theme); } catch {}
+}
+try { setTheme(localStorage.getItem('deck-theme') || root.dataset.theme); } catch {}
+
+function countText(el, value) {
+  return (el.dataset.prefix || '') + plain.format(value) + (el.dataset.suffix || '');
+}
+
+function animateCounts(slide) {
+  $$('[data-count]', slide).forEach((el) => {
+    const target = Number(el.dataset.count);
+    const start = performance.now();
+    cancelAnimationFrame(el.frame);
+    const tick = (now) => {
+      const t = clamp((now - start) / 900, 0, 1);
+      el.textContent = countText(el, Math.round(target * (1 - (1 - t) ** 3)));
+      if (t < 1) el.frame = requestAnimationFrame(tick);
+    };
+    el.frame = requestAnimationFrame(tick);
+  });
+}
+
+function updateCalc(calc) {
+  let total = Number(calc.dataset.factor || 1);
+  $$('input[type="range"]', calc).forEach((input) => {
+    const value = Number(input.value);
+    total *= input.dataset.format === 'percent' ? value / 100 : value;
+    $('output', input.closest('label')).textContent = formats[input.dataset.format](value);
+  });
+  $('[data-result]', calc).textContent = bigMoney.format(total);
+}
+
+function updatePoll(poll) {
+  const options = $$('.option', poll);
+  const total = options.reduce((sum, o) => sum + Number(o.dataset.votes || 0), 0);
+  options.forEach((option) => {
+    const votes = Number(option.dataset.votes || 0);
+    const share = total ? Math.round((votes / total) * 100) : 0;
+    option.style.setProperty('--share', share + '%');
+    $('[data-share]', option).textContent = total ? `${votes} · ${share}%` : '0';
+  });
+}
+
+$$('[data-count]').forEach((el) => { el.textContent = countText(el, Number(el.dataset.count)); });
+$$('[data-calc]').forEach((calc) => {
+  calc.addEventListener('input', () => updateCalc(calc));
+  updateCalc(calc);
+});
+
+function cloneSlide(i, shown) {
+  const copy = slides[i].cloneNode(true);
+  copy.classList.add('active');
+  $$('.step', copy).forEach((el, n) => el.classList.toggle('shown', n < shown));
+  return copy;
+}
+
+function startPresenter() {
+  body.innerHTML = `
+    <div id="presenter">
+      <div class="area-current">
+        <span class="label">Current</span>
+        <div class="preview" id="p-current"></div>
+      </div>
+      <div class="area-side">
+        <span class="label">Next</span>
+        <div class="preview small" id="p-next"></div>
+        <span class="label">Notes</span>
+        <div id="p-notes"></div>
+      </div>
+      <footer>
+        <span id="p-timer">00:00</span>
+        <button id="p-pause">Pause</button>
+        <button id="p-reset">Reset</button>
+        <button data-cmd="prev">‹ Previous</button>
+        <button data-cmd="next">Next ›</button>
+        <button data-cmd="black">Black screen</button>
+        <span id="p-status">Not connected. Open this view from the slides with the P key.</span>
+      </footer>
+    </div>`;
+  document.title = 'Presenter view';
+
+  const send = (message) => window.opener && window.opener.postMessage({ deck: 'pitch', ...message }, '*');
+  let current = { index, step };
+  let elapsed = 0;
+  let last = Date.now();
+  let running = true;
+  let heard = 0;
+
+  const fit = () => $$('.preview').forEach((box) => {
+    const slide = $('.slide', box);
+    if (slide) slide.style.transform = `scale(${box.clientWidth / 1280})`;
+  });
+
+  const draw = () => {
+    const { index: i, step: s } = current;
+    $('#p-current').replaceChildren(cloneSlide(i, s));
+    let upcoming;
+    if (s < stepsOf(i)) upcoming = cloneSlide(i, s + 1);
+    else if (i < slides.length - 1) upcoming = cloneSlide(i + 1, 0);
+    else upcoming = Object.assign(document.createElement('div'), { className: 'end', textContent: 'End of deck' });
+    $('#p-next').replaceChildren(upcoming);
+    $('#p-notes').textContent = $('.notes', slides[i])?.textContent.trim() || 'No notes for this slide.';
+    fit();
+  };
+
+  addEventListener('message', (event) => {
+    if (event.source !== window.opener || event.data?.deck !== 'pitch' || event.data.type !== 'state') return;
+    const { index: i, step: s, theme } = event.data;
+    const changed = i !== current.index || s !== current.step;
+    current = { index: i, step: s };
+    root.dataset.theme = theme;
+    heard = Date.now();
+    if (changed) draw();
+  });
+
+  setInterval(() => {
+    const now = Date.now();
+    if (running) elapsed += now - last;
+    last = now;
+    const total = Math.floor(elapsed / 1000);
+    $('#p-timer').textContent = [Math.floor(total / 60), total % 60].map((n) => String(n).padStart(2, '0')).join(':');
+    $('#p-status').textContent = now - heard < 2000
+      ? `Slide ${current.index + 1} of ${slides.length}`
+      : 'Not connected. Open this view from the slides with the P key.';
+    send({ type: 'hello' });
+  }, 500);
+
+  $('#p-pause').onclick = (e) => { running = !running; e.target.textContent = running ? 'Pause' : 'Resume'; };
+  $('#p-reset').onclick = () => { elapsed = 0; };
+  $$('[data-cmd]').forEach((button) => button.addEventListener('click', () => {
+    send({ type: 'command', command: button.dataset.cmd });
+    button.blur();
+  }));
+
+  const keys = { ArrowRight: 'next', ArrowDown: 'next', PageDown: 'next', ' ': 'next', Enter: 'next', ArrowLeft: 'prev', ArrowUp: 'prev', PageUp: 'prev', Backspace: 'prev', Home: 'first', End: 'last', b: 'black', B: 'black', '.': 'black' };
+  addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || !keys[e.key]) return;
+    e.preventDefault();
+    send({ type: 'command', command: keys[e.key] });
+  });
+
+  addEventListener('resize', fit);
+  draw();
+  send({ type: 'hello' });
+}
+
+function startDeck() {
+  const ink = $('#ink');
+  const pen = ink.getContext('2d');
+  const overview = $('#overview');
+  const strokes = slides.map(() => []);
+  let presenterWindow = null;
+  let stroke = null;
+  let typed = '';
+  let typedTimer, idleTimer, toastTimer;
+
+  const fit = () => stage.style.setProperty('--scale', Math.min(innerWidth / 1280, innerHeight / 720));
+
+  const redraw = () => {
+    pen.setTransform(2, 0, 0, 2, 0, 0);
+    pen.clearRect(0, 0, 1280, 720);
+    pen.lineWidth = 5;
+    pen.lineCap = pen.lineJoin = 'round';
+    pen.strokeStyle = '#ff4d4d';
+    strokes[index].forEach((points) => {
+      pen.beginPath();
+      pen.moveTo(...points[0]);
+      points.forEach((point) => pen.lineTo(...point));
+      pen.stroke();
+    });
+  };
+
+  const sync = () => presenterWindow && !presenterWindow.closed &&
+    presenterWindow.postMessage({ deck: 'pitch', type: 'state', index, step, theme: root.dataset.theme }, '*');
+
+  const render = () => {
+    slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+    $$('.step', slides[index]).forEach((el, n) => el.classList.toggle('shown', n < step));
+    $('#count').textContent = `${index + 1} / ${slides.length}`;
+    $('#progress').style.width = `${((index + 1) / slides.length) * 100}%`;
+    $$('.thumb', overview).forEach((thumb, i) => thumb.classList.toggle('current', i === index));
+    try { history.replaceState(null, '', '#' + (index + 1)); } catch {}
+    redraw();
+    sync();
+  };
+
+  const go = (target, targetStep = 0) => {
+    target = clamp(target, 0, slides.length - 1);
+    const changed = target !== index;
+    if (changed) {
+      $$('video', slides[index]).forEach((video) => video.pause());
+      if (document.activeElement !== body) document.activeElement.blur();
+    }
+    index = target;
+    step = targetStep;
+    render();
+    if (changed) animateCounts(slides[index]);
+  };
+
+  const toast = (text) => {
+    $('#toast').textContent = text;
+    $('#toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 3500);
+  };
+
+  const mark = (action, on) => $(`[data-action="${action}"]`).classList.toggle('on', on);
+
+  const setDraw = (on) => {
+    body.classList.toggle('drawing', on);
+    mark('draw', on);
+    if (on) setLaser(false);
+  };
+
+  const setLaser = (on) => {
+    body.classList.toggle('pointing', on);
+    $('#laser').hidden = !on;
+    mark('laser', on);
+    if (on) setDraw(false);
+  };
+
+  const toggleOverview = (open = overview.hidden) => {
+    overview.hidden = !open;
+    if (!open) return overview.replaceChildren();
+    overview.replaceChildren(...slides.map((_, i) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      thumb.classList.toggle('current', i === index);
+      const number = Object.assign(document.createElement('b'), { textContent: i + 1 });
+      const copy = cloneSlide(i, stepsOf(i));
+      copy.inert = true;
+      thumb.append(copy, number);
+      thumb.addEventListener('click', () => { toggleOverview(false); go(i); });
+      return thumb;
+    }));
+    $('.current', overview).scrollIntoView({ block: 'center' });
+  };
+
+  const actions = {
+    next: () => (step < stepsOf(index) ? go(index, step + 1) : index < slides.length - 1 && go(index + 1)),
+    prev: () => (step > 0 ? go(index, step - 1) : index > 0 && go(index - 1, stepsOf(index - 1))),
+    first: () => go(0),
+    last: () => go(slides.length - 1),
+    overview: () => toggleOverview(),
+    draw: () => setDraw(!body.classList.contains('drawing')),
+    clear: () => { strokes[index] = []; redraw(); },
+    laser: () => setLaser(!body.classList.contains('pointing')),
+    black: () => { $('#black').hidden = !$('#black').hidden; },
+    help: () => { $('#help').hidden = !$('#help').hidden; },
+    theme: () => { setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'); sync(); },
+    fullscreen: () => (document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen().catch(() => toast('Fullscreen is not available'))),
+    presenter: () => {
+      presenterWindow = window.open(location.href.split(/[?#]/)[0] + '?presenter#' + (index + 1), 'deck-presenter', 'width=1200,height=750');
+      if (!presenterWindow) toast('Allow pop-ups for this page to open the presenter view');
+    },
+    escape: () => {
+      $('#help').hidden = true;
+      $('#black').hidden = true;
+      toggleOverview(false);
+      setDraw(false);
+      setLaser(false);
+    },
+  };
+
+  const keys = {
+    ArrowRight: 'next', ArrowDown: 'next', PageDown: 'next', ' ': 'next', Enter: 'next',
+    ArrowLeft: 'prev', ArrowUp: 'prev', PageUp: 'prev', Backspace: 'prev',
+    Home: 'first', End: 'last', Escape: 'escape',
+    o: 'overview', d: 'draw', c: 'clear', l: 'laser', b: 'black', '.': 'black',
+    h: 'help', '?': 'help', t: 'theme', f: 'fullscreen', p: 'presenter',
+  };
+
+  addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.matches('input') && /^(Arrow|Home|End)/.test(e.key)) return;
+    if (e.target.closest('button, a, input, video') && (e.key === ' ' || e.key === 'Enter')) return;
+
+    if (/^\d$/.test(e.key)) {
+      typed += e.key;
+      toast('Go to slide ' + typed);
+      clearTimeout(typedTimer);
+      typedTimer = setTimeout(() => { typed = ''; }, 2000);
+      return;
+    }
+    if (e.key === 'Enter' && typed) {
+      go(Number(typed) - 1);
+      typed = '';
+      return;
+    }
+
+    let action = keys[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    if (!action) return;
+    e.preventDefault();
+    if (e.key === ' ' && e.shiftKey) action = 'prev';
+    if (!$('#black').hidden && action !== 'black') return actions.black();
+    if (!overview.hidden && e.key === 'Enter') return toggleOverview(false);
+    actions[action]();
+  });
+
+  document.addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (button && e.detail) button.blur();
+  });
+  document.addEventListener('pointerup', (e) => {
+    if (e.target.matches('input')) e.target.blur();
+  });
+
+  $('#toolbar').addEventListener('click', (e) => {
+    const button = e.target.closest('[data-action]');
+    if (button) actions[button.dataset.action]();
+  });
+
+  const isInteractive = (el) => el.closest('button, a, input, label, video, [data-interactive]');
+
+  stage.addEventListener('click', (e) => {
+    if (body.classList.contains('drawing') || isInteractive(e.target) || String(getSelection())) return;
+    actions.next();
+  });
+
+  stage.addEventListener('click', (e) => {
+    const toggle = e.target.closest('[data-toggle]');
+    if (toggle) toggle.classList.toggle('open');
+
+    const tab = e.target.closest('[data-tab]');
+    if (tab) {
+      const group = tab.closest('[data-tabs]');
+      $$('[data-tab]', group).forEach((el) => el.classList.toggle('selected', el === tab));
+      $$('[data-panel]', group).forEach((el) => el.classList.toggle('selected', el.dataset.panel === tab.dataset.tab));
+    }
+
+    const choice = e.target.closest('[data-switch] [data-value]');
+    if (choice) {
+      const group = choice.closest('[data-switch]');
+      group.dataset.mode = choice.dataset.value;
+      $$('[data-value]', group).forEach((el) => el.classList.toggle('selected', el === choice));
+    }
+
+    const poll = e.target.closest('[data-poll]');
+    if (poll) {
+      const option = e.target.closest('.option');
+      if (option) option.dataset.votes = Number(option.dataset.votes || 0) + 1;
+      if (e.target.closest('[data-reset]')) $$('.option', poll).forEach((el) => { el.dataset.votes = 0; });
+      updatePoll(poll);
+    }
+  });
+
+  $('#black').addEventListener('click', actions.black);
+  $('#help').addEventListener('click', actions.help);
+
+  const position = (e) => {
+    const box = ink.getBoundingClientRect();
+    return [((e.clientX - box.left) / box.width) * 1280, ((e.clientY - box.top) / box.height) * 720];
+  };
+  ink.addEventListener('pointerdown', (e) => {
+    ink.setPointerCapture(e.pointerId);
+    stroke = [position(e)];
+    strokes[index].push(stroke);
+    redraw();
+  });
+  ink.addEventListener('pointermove', (e) => {
+    if (!stroke) return;
+    stroke.push(position(e));
+    redraw();
+  });
+  ['pointerup', 'pointercancel'].forEach((type) => ink.addEventListener(type, () => { stroke = null; }));
+
+  const wake = () => {
+    body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => body.classList.add('idle'), 2500);
+  };
+  addEventListener('pointermove', (e) => {
+    $('#laser').style.left = e.clientX + 'px';
+    $('#laser').style.top = e.clientY + 'px';
+    wake();
+  });
+  addEventListener('pointerdown', wake);
+
+  let touch = null;
+  stage.addEventListener('touchstart', (e) => {
+    touch = body.classList.contains('drawing') || isInteractive(e.target) ? null : e.changedTouches[0];
+  }, { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    if (!touch) return;
+    const dx = e.changedTouches[0].clientX - touch.clientX;
+    const dy = e.changedTouches[0].clientY - touch.clientY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) actions[dx < 0 ? 'next' : 'prev']();
+    touch = null;
+  });
+
+  addEventListener('message', (e) => {
+    if (!e.source || e.data?.deck !== 'pitch') return;
+    if (e.data.type === 'hello') {
+      presenterWindow = e.source;
+      sync();
+    }
+    if (e.data.type === 'command' && e.source === presenterWindow) actions[e.data.command]?.();
+  });
+
+  addEventListener('hashchange', () => go((parseInt(location.hash.slice(1), 10) || 1) - 1));
+  addEventListener('resize', fit);
+
+  fit();
+  render();
+  animateCounts(slides[index]);
+  wake();
+}
+
+if (isPresenter) startPresenter();
+else startDeck();
+</script>
+</body>
+</html>
